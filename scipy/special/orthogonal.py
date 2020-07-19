@@ -163,7 +163,7 @@ class orthopoly1d(np.poly1d):
         self.normcoef *= p
 
 
-def _gen_roots_and_weights(n, mu0, an_func, bn_func, f, df, symmetrize, mu):
+def _gen_roots_and_weights(n, mu0, an_func, bn_func, f, df, symmetrize, mu, log_mu0=None):
     """[x,w] = gen_roots_and_weights(n,an_func,sqrt_bn_func,mu)
 
     Returns the roots (x) of an nth order orthogonal polynomial,
@@ -198,17 +198,21 @@ def _gen_roots_and_weights(n, mu0, an_func, bn_func, f, df, symmetrize, mu):
         w = (w + w[::-1]) / 2
         x = (x - x[::-1]) / 2
 
-    w *= mu0 / w.sum()
-
-    if mu:
-        return x, w, mu0
-    else:
+    if log_mu0 is None:
+        w *= mu0 / w.sum()
+        if mu: return x, w, mu0
         return x, w
+
+    else:
+        log_w = np.log(w) + log_mu0 - np.log(w.sum())
+        if mu: return x, log_w, log_mu0
+        return x, log_w
+
 
 # Jacobi Polynomials 1               P^(alpha,beta)_n(x)
 
 
-def roots_jacobi(n, alpha, beta, mu=False):
+def roots_jacobi(n, alpha, beta, mu=False, log_values=False):
     r"""Gauss-Jacobi quadrature.
 
     Compute the sample points and weights for Gauss-Jacobi
@@ -229,6 +233,8 @@ def roots_jacobi(n, alpha, beta, mu=False):
         beta must be > -1
     mu : bool, optional
         If True, return the sum of the weights, optional.
+    log_values : bool, optional
+        If true, return the log of the weights and mu0, optional.
 
     Returns
     -------
@@ -262,7 +268,7 @@ def roots_jacobi(n, alpha, beta, mu=False):
     if alpha == beta:
         return roots_gegenbauer(m, alpha+0.5, mu)
 
-    mu0 = 2.0**(alpha+beta+1)*cephes.beta(alpha+1, beta+1)
+    log_mu0 = (alpha + beta + 1) * np.log(2.0) + cephes.betaln(alpha + 1, beta + 1)
     a = alpha
     b = beta
     if a + b == 0.0:
@@ -277,7 +283,15 @@ def roots_jacobi(n, alpha, beta, mu=False):
     f = lambda n, x: cephes.eval_jacobi(n, a, b, x)
     df = lambda n, x: 0.5 * (n + a + b + 1) \
                       * cephes.eval_jacobi(n-1, a+1, b+1, x)
-    return _gen_roots_and_weights(m, mu0, an_func, bn_func, f, df, False, mu)
+    
+    x, log_w, log_mu0 = _gen_roots_and_weights(m, None, an_func, bn_func, f, df, False, True, log_mu0)
+    
+    if log_values:
+        if mu: return x, log_w, log_mu0
+        return x, log_w
+    else:
+        if mu: return x, np.exp(log_w), np.exp(log_mu0)
+        return x, np.exp(log_w)
 
 
 def jacobi(n, alpha, beta, monic=False):
@@ -338,7 +352,7 @@ def jacobi(n, alpha, beta, monic=False):
 # Jacobi Polynomials shifted         G_n(p,q,x)
 
 
-def roots_sh_jacobi(n, p1, q1, mu=False):
+def roots_sh_jacobi(n, p1, q1, mu=False, log_values=False):
     """Gauss-Jacobi (shifted) quadrature.
 
     Compute the sample points and weights for Gauss-Jacobi (shifted)
@@ -359,6 +373,8 @@ def roots_sh_jacobi(n, p1, q1, mu=False):
         q1 must be > 0
     mu : bool, optional
         If True, return the sum of the weights, optional.
+    log_values : bool, optional
+        If true, return the log of the weights and mu0, optional.
 
     Returns
     -------
@@ -383,15 +399,19 @@ def roots_sh_jacobi(n, p1, q1, mu=False):
     """
     if (p1-q1) <= -1 or q1 <= 0:
         raise ValueError("(p - q) must be greater than -1, and q must be greater than 0.")
-    x, w, m = roots_jacobi(n, p1-q1, q1-1, True)
+    x, log_w, log_m = roots_jacobi(n, p1-q1, q1-1, True, True)
     x = (x + 1) / 2
-    scale = 2.0**p1
-    w /= scale
-    m /= scale
-    if mu:
-        return x, w, m
+    scale = p1 * np.log(2.0)
+    log_w -= scale
+    log_m -= scale
+
+    if log_values:
+        if mu: return x, log_w, log_m
+        return x, log_w
     else:
-        return x, w
+        if mu: return x, np.exp(log_w), np.exp(log_m)
+        return x, np.exp(log_w)
+
 
 def sh_jacobi(n, p, q, monic=False):
     r"""Shifted Jacobi polynomial.

@@ -269,7 +269,7 @@ def roots_jacobi(n, alpha, beta, mu=False, log_values=False):
         return roots_gegenbauer(m, alpha+0.5, mu)
 
     if log_values:
-        mu0 = (alpha + beta + 1) * np.log(2.0) + cephes.betaln(alpha + 1, beta + 1)
+        mu0 = (alpha+beta+1)*np.log(2.0) + cephes.betaln(alpha+1, beta+1)
     else:
         mu0 = 2.0**(alpha+beta+1)*cephes.beta(alpha+1, beta+1)
 
@@ -399,7 +399,7 @@ def roots_sh_jacobi(n, p1, q1, mu=False, log_values=False):
     x = (x + 1) / 2
 
     if log_values:
-        scale = p1 * np.log(2.0)
+        scale = p1*np.log(2.0)
         w -= scale
         m -= scale
     else:

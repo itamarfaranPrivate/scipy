@@ -467,7 +467,7 @@ def sh_jacobi(n, p, q, monic=False):
 # Generalized Laguerre               L^(alpha)_n(x)
 
 
-def roots_genlaguerre(n, alpha, mu=False):
+def roots_genlaguerre(n, alpha, mu=False, log_weights=False):
     r"""Gauss-generalized Laguerre quadrature.
 
     Compute the sample points and weights for Gauss-generalized
@@ -486,15 +486,17 @@ def roots_genlaguerre(n, alpha, mu=False):
         alpha must be > -1
     mu : bool, optional
         If True, return the sum of the weights, optional.
+    log_weights : bool, optional
+        If true, return the log of the weights and mu0, optional.
 
     Returns
     -------
     x : ndarray
         Sample points
     w : ndarray
-        Weights
+        Weights if log_weights=False (default), else the log of the weights
     mu : float
-        Sum of the weights
+        Sum of the weights if log_weights=False (default), else the log of the Sum of the weights
 
     See Also
     --------
@@ -514,7 +516,10 @@ def roots_genlaguerre(n, alpha, mu=False):
     if alpha < -1:
         raise ValueError("alpha must be greater than -1.")
 
-    mu0 = cephes.gamma(alpha + 1)
+    if log_weights:
+        mu0 = cephes.gammaln(alpha + 1)
+    else:
+        mu0 = cephes.gamma(alpha + 1)
 
     if m == 1:
         x = np.array([alpha+1.0], 'd')
@@ -529,7 +534,7 @@ def roots_genlaguerre(n, alpha, mu=False):
     f = lambda n, x: cephes.eval_genlaguerre(n, alpha, x)
     df = lambda n, x: (n*cephes.eval_genlaguerre(n, alpha, x)
                      - (n + alpha)*cephes.eval_genlaguerre(n-1, alpha, x))/x
-    return _gen_roots_and_weights(m, mu0, an_func, bn_func, f, df, False, mu)
+    return _gen_roots_and_weights(m, mu0, an_func, bn_func, f, df, False, mu, log_weights)
 
 
 def genlaguerre(n, alpha, monic=False):

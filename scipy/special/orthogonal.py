@@ -1660,7 +1660,7 @@ def chebyu(n, monic=False):
 # Chebyshev of the first kind        C_n(x)
 
 
-def roots_chebyc(n, mu=False):
+def roots_chebyc(n, mu=False, log_weights=False):
     r"""Gauss-Chebyshev (first kind) quadrature.
 
     Compute the sample points and weights for Gauss-Chebyshev
@@ -1677,15 +1677,17 @@ def roots_chebyc(n, mu=False):
         quadrature order
     mu : bool, optional
         If True, return the sum of the weights, optional.
+    log_weights : bool, optional
+        If true, return the log of the weights and mu0, optional.
 
     Returns
     -------
     x : ndarray
         Sample points
     w : ndarray
-        Weights
+        Weights if log_weights=False (default), else the log of the weights
     mu : float
-        Sum of the weights
+        Sum of the weights if log_weights=False (default), else the log of the Sum of the weights
 
     See Also
     --------
@@ -1699,10 +1701,14 @@ def roots_chebyc(n, mu=False):
         Graphs, and Mathematical Tables. New York: Dover, 1972.
 
     """
-    x, w, m = roots_chebyt(n, True)
+    x, w, m = roots_chebyt(n, True, log_weights)
     x *= 2
-    w *= 2
-    m *= 2
+    if log_weights:
+        w += np.log(2)
+        m += np.log(2)
+    else:
+        w *= 2
+        m *= 2
     if mu:
         return x, w, m
     else:

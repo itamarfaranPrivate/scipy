@@ -199,10 +199,9 @@ def _gen_roots_and_weights(n, mu0, an_func, bn_func, f, df, symmetrize, mu, log_
         x = (x - x[::-1]) / 2
 
     if log_values:
-        w = np.log(w)
-        w += mu0 - np.log(w.sum())
+        w = np.log(w) + mu0 - np.log(w.sum())
     else:
-        w *= mu0 / w.sum()
+        w = w * mu0 / w.sum()
 
     if mu:
         return x, w, mu0

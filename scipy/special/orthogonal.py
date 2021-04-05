@@ -1478,7 +1478,7 @@ def roots_chebyt(n, mu=False, log_weights=False):
 
     if log_weights:
         w = np.log(w)
-        mu0 = np.log(pi)
+        mu0 = np.log(mu0)
 
     if mu:
         return x, w, mu0

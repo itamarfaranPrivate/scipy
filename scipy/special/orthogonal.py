@@ -601,7 +601,7 @@ def genlaguerre(n, alpha, monic=False):
 # Laguerre                      L_n(x)
 
 
-def roots_laguerre(n, mu=False):
+def roots_laguerre(n, mu=False, log_weights=False):
     r"""Gauss-Laguerre quadrature.
 
     Compute the sample points and weights for Gauss-Laguerre
@@ -617,15 +617,17 @@ def roots_laguerre(n, mu=False):
         quadrature order
     mu : bool, optional
         If True, return the sum of the weights, optional.
+    log_weights : bool, optional
+        If true, return the log of the weights and mu0, optional.
 
     Returns
     -------
     x : ndarray
         Sample points
     w : ndarray
-        Weights
+        Weights if log_weights=False (default), else the log of the weights
     mu : float
-        Sum of the weights
+        Sum of the weights if log_weights=False (default), else the log of the Sum of the weights
 
     See Also
     --------
@@ -640,7 +642,7 @@ def roots_laguerre(n, mu=False):
         Graphs, and Mathematical Tables. New York: Dover, 1972.
 
     """
-    return roots_genlaguerre(n, 0.0, mu=mu)
+    return roots_genlaguerre(n, 0.0, mu=mu, log_weights=log_weights)
 
 
 def laguerre(n, monic=False):
@@ -691,7 +693,7 @@ def laguerre(n, monic=False):
 # Hermite  1                         H_n(x)
 
 
-def roots_hermite(n, mu=False):
+def roots_hermite(n, mu=False, log_weights=False):
     r"""Gauss-Hermite (physicist's) quadrature.
 
     Compute the sample points and weights for Gauss-Hermite
@@ -708,15 +710,17 @@ def roots_hermite(n, mu=False):
         quadrature order
     mu : bool, optional
         If True, return the sum of the weights, optional.
+    log_weights : bool, optional
+        If true, return the log of the weights and mu0, optional.
 
     Returns
     -------
     x : ndarray
         Sample points
     w : ndarray
-        Weights
+        Weights if log_weights=False (default), else the log of the weights
     mu : float
-        Sum of the weights
+        Sum of the weights if log_weights=False (default), else the log of the Sum of the weights
 
     Notes
     -----
@@ -758,15 +762,20 @@ def roots_hermite(n, mu=False):
     if n < 1 or n != m:
         raise ValueError("n must be a positive integer.")
 
-    mu0 = np.sqrt(np.pi)
+    if log_weights:
+        mu0 = 0.5 * np.log(np.pi)
+    else:
+        mu0 = np.sqrt(np.pi)
     if n <= 150:
         an_func = lambda k: 0.0*k
         bn_func = lambda k: np.sqrt(k/2.0)
         f = cephes.eval_hermite
         df = lambda n, x: 2.0 * n * cephes.eval_hermite(n-1, x)
-        return _gen_roots_and_weights(m, mu0, an_func, bn_func, f, df, True, mu)
+        return _gen_roots_and_weights(m, mu0, an_func, bn_func, f, df, True, mu, log_weights)
     else:
         nodes, weights = _roots_hermite_asy(m)
+        if log_weights:
+            weights = np.log(weights)
         if mu:
             return nodes, weights, mu0
         else:

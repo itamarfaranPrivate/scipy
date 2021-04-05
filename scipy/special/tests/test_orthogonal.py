@@ -276,9 +276,13 @@ class TestGenlaguerre(object):
 
 
 def verify_gauss_quad(root_func, eval_func, weight_func, a, b, N,
-                      rtol=1e-15, atol=1e-14):
+                      rtol=1e-15, atol=1e-14, log_weights=False):
     # this test is copied from numpy's TestGauss in test_hermite.py
     x, w, mu = root_func(N, True)
+
+    if log_weights:
+        w = np.exp(w)
+        mu = np.exp(mu)
 
     n = np.arange(N)
     v = eval_func(n[:,np.newaxis], x)

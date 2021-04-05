@@ -1559,7 +1559,7 @@ def chebyt(n, monic=False):
 #    U_n(x) = (n+1)! sqrt(pi) / (2*_gam(n+3./2)) * P^(1/2,1/2)_n(x)
 
 
-def roots_chebyu(n, mu=False):
+def roots_chebyu(n, mu=False, log_weights=False):
     r"""Gauss-Chebyshev (second kind) quadrature.
 
     Computes the sample points and weights for Gauss-Chebyshev
@@ -1576,15 +1576,17 @@ def roots_chebyu(n, mu=False):
         quadrature order
     mu : bool, optional
         If True, return the sum of the weights, optional.
+    log_weights : bool, optional
+        If true, return the log of the weights and mu0, optional.
 
     Returns
     -------
     x : ndarray
         Sample points
     w : ndarray
-        Weights
+        Weights if log_weights=False (default), else the log of the weights
     mu : float
-        Sum of the weights
+        Sum of the weights if log_weights=False (default), else the log of the Sum of the weights
 
     See Also
     --------
@@ -1604,8 +1606,12 @@ def roots_chebyu(n, mu=False):
     t = np.arange(m, 0, -1) * pi / (m + 1)
     x = np.cos(t)
     w = pi * np.sin(t)**2 / (m + 1)
+    mu0 = pi / 2
+    if log_weights:
+        w = np.log(w)
+        mu0 = np.log(mu0)
     if mu:
-        return x, w, pi / 2
+        return x, w, mu0
     else:
         return x, w
 

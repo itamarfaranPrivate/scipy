@@ -1196,7 +1196,7 @@ def hermite(n, monic=False):
 # Hermite  2                         He_n(x)
 
 
-def roots_hermitenorm(n, mu=False):
+def roots_hermitenorm(n, mu=False, log_weights=False):
     r"""Gauss-Hermite (statistician's) quadrature.
 
     Compute the sample points and weights for Gauss-Hermite
@@ -1213,15 +1213,17 @@ def roots_hermitenorm(n, mu=False):
         quadrature order
     mu : bool, optional
         If True, return the sum of the weights, optional.
+    log_weights : bool, optional
+        If true, return the log of the weights and mu0, optional.
 
     Returns
     -------
     x : ndarray
         Sample points
     w : ndarray
-        Weights
+        Weights if log_weights=False (default), else the log of the weights
     mu : float
-        Sum of the weights
+        Sum of the weights if log_weights=False (default), else the log of the Sum of the weights
 
     Notes
     -----
@@ -1252,18 +1254,23 @@ def roots_hermitenorm(n, mu=False):
     if n < 1 or n != m:
         raise ValueError("n must be a positive integer.")
 
-    mu0 = np.sqrt(2.0*np.pi)
+    if log_weights:
+        mu0 = 0.5 * np.log(2.0 * np.pi)
+    else:
+        mu0 = np.sqrt(2.0 * np.pi)
     if n <= 150:
         an_func = lambda k: 0.0*k
         bn_func = lambda k: np.sqrt(k)
         f = cephes.eval_hermitenorm
         df = lambda n, x: n * cephes.eval_hermitenorm(n-1, x)
-        return _gen_roots_and_weights(m, mu0, an_func, bn_func, f, df, True, mu)
+        return _gen_roots_and_weights(m, mu0, an_func, bn_func, f, df, True, mu, log_weights)
     else:
         nodes, weights = _roots_hermite_asy(m)
         # Transform
         nodes *= sqrt(2)
         weights *= sqrt(2)
+        if log_weights:
+            weights = np.log(weights)
         if mu:
             return nodes, weights, mu0
         else:

@@ -240,9 +240,9 @@ def roots_jacobi(n, alpha, beta, mu=False, log_values=False):
     x : ndarray
         Sample points
     w : ndarray
-        Weights
+        Weights if log_values=False (default), else the log of the weights
     mu : float
-        Sum of the weights
+        Sum of the weights if log_values=False (default), else the log of the Sum of the weights
 
     See Also
     --------
@@ -376,9 +376,9 @@ def roots_sh_jacobi(n, p1, q1, mu=False, log_values=False):
     x : ndarray
         Sample points
     w : ndarray
-        Weights
+        Weights if log_values=False (default), else the log of the weights
     mu : float
-        Sum of the weights
+        Sum of the weights if log_values=False (default), else the log of the Sum of the weights
 
     See Also
     --------
@@ -1337,9 +1337,9 @@ def roots_gegenbauer(n, alpha, mu=False, log_values=False):
     x : ndarray
         Sample points
     w : ndarray
-        Weights
+        Weights if log_values=False (default), else the log of the weights
     mu : float
-        Sum of the weights
+        Sum of the weights if log_values=False (default), else the log of the Sum of the weights
 
     See Also
     --------
@@ -1452,9 +1452,9 @@ def roots_chebyt(n, mu=False, log_values=False):
     x : ndarray
         Sample points
     w : ndarray
-        Weights
+        Weights if log_values=False (default), else the log of the weights
     mu : float
-        Sum of the weights
+        Sum of the weights if log_values=False (default), else the log of the Sum of the weights
 
     See Also
     --------
@@ -2034,9 +2034,9 @@ def roots_legendre(n, mu=False, log_values=False):
     x : ndarray
         Sample points
     w : ndarray
-        Weights
+        Weights if log_values=False (default), else the log of the weights
     mu : float
-        Sum of the weights
+        Sum of the weights if log_values=False (default), else the log of the Sum of the weights
 
     See Also
     --------

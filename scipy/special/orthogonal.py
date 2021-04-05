@@ -1953,7 +1953,7 @@ def sh_chebyt(n, monic=False):
 
 
 # Shifted Chebyshev of the second kind    U^*_n(x)
-def roots_sh_chebyu(n, mu=False):
+def roots_sh_chebyu(n, mu=False, log_weights=False):
     r"""Gauss-Chebyshev (second kind, shifted) quadrature.
 
     Computes the sample points and weights for Gauss-Chebyshev
@@ -1970,15 +1970,17 @@ def roots_sh_chebyu(n, mu=False):
         quadrature order
     mu : bool, optional
         If True, return the sum of the weights, optional.
+    log_weights : bool, optional
+        If true, return the log of the weights and mu0, optional.
 
     Returns
     -------
     x : ndarray
         Sample points
     w : ndarray
-        Weights
+        Weights if log_weights=False (default), else the log of the weights
     mu : float
-        Sum of the weights
+        Sum of the weights if log_weights=False (default), else the log of the Sum of the weights
 
     See Also
     --------
@@ -1992,10 +1994,14 @@ def roots_sh_chebyu(n, mu=False):
         Graphs, and Mathematical Tables. New York: Dover, 1972.
 
     """
-    x, w, m = roots_chebyu(n, True)
+    x, w, m = roots_chebyu(n, True, log_weights)
     x = (x + 1) / 2
-    m_us = cephes.beta(1.5, 1.5)
-    w *= m_us / m
+    if log_weights:
+        m_us = cephes.betaln(1.5, 1.5)
+        w += m_us - m
+    else:
+        m_us = cephes.beta(1.5, 1.5)
+        w *= m_us / m
     if mu:
         return x, w, m_us
     else:

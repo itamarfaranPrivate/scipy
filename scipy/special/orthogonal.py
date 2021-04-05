@@ -496,7 +496,7 @@ def roots_genlaguerre(n, alpha, mu=False, log_weights=False):
     w : ndarray
         Weights if log_weights=False (default), else the log of the weights
     mu : float
-        Sum of the weights if log_weights=False (default), else the log of the Sum of the weights
+        Sum of the weights if log_weights=False (default), else the log of the sum of the weights
 
     See Also
     --------
@@ -627,7 +627,7 @@ def roots_laguerre(n, mu=False, log_weights=False):
     w : ndarray
         Weights if log_weights=False (default), else the log of the weights
     mu : float
-        Sum of the weights if log_weights=False (default), else the log of the Sum of the weights
+        Sum of the weights if log_weights=False (default), else the log of the sum of the weights
 
     See Also
     --------
@@ -720,7 +720,7 @@ def roots_hermite(n, mu=False, log_weights=False):
     w : ndarray
         Weights if log_weights=False (default), else the log of the weights
     mu : float
-        Sum of the weights if log_weights=False (default), else the log of the Sum of the weights
+        Sum of the weights if log_weights=False (default), else the log of the sum of the weights
 
     Notes
     -----
@@ -1223,7 +1223,7 @@ def roots_hermitenorm(n, mu=False, log_weights=False):
     w : ndarray
         Weights if log_weights=False (default), else the log of the weights
     mu : float
-        Sum of the weights if log_weights=False (default), else the log of the Sum of the weights
+        Sum of the weights if log_weights=False (default), else the log of the sum of the weights
 
     Notes
     -----
@@ -1586,7 +1586,7 @@ def roots_chebyu(n, mu=False, log_weights=False):
     w : ndarray
         Weights if log_weights=False (default), else the log of the weights
     mu : float
-        Sum of the weights if log_weights=False (default), else the log of the Sum of the weights
+        Sum of the weights if log_weights=False (default), else the log of the sum of the weights
 
     See Also
     --------
@@ -1687,7 +1687,7 @@ def roots_chebyc(n, mu=False, log_weights=False):
     w : ndarray
         Weights if log_weights=False (default), else the log of the weights
     mu : float
-        Sum of the weights if log_weights=False (default), else the log of the Sum of the weights
+        Sum of the weights if log_weights=False (default), else the log of the sum of the weights
 
     See Also
     --------
@@ -1799,7 +1799,7 @@ def roots_chebys(n, mu=False, log_weights=False):
     w : ndarray
         Weights if log_weights=False (default), else the log of the weights
     mu : float
-        Sum of the weights if log_weights=False (default), else the log of the Sum of the weights
+        Sum of the weights if log_weights=False (default), else the log of the sum of the weights
 
     See Also
     --------
@@ -1912,7 +1912,7 @@ def roots_sh_chebyt(n, mu=False, log_weights=False):
     w : ndarray
         Weights if log_weights=False (default), else the log of the weights
     mu : float
-        Sum of the weights if log_weights=False (default), else the log of the Sum of the weights
+        Sum of the weights if log_weights=False (default), else the log of the sum of the weights
 
     See Also
     --------
@@ -1994,7 +1994,7 @@ def roots_sh_chebyu(n, mu=False, log_weights=False):
     w : ndarray
         Weights if log_weights=False (default), else the log of the weights
     mu : float
-        Sum of the weights if log_weights=False (default), else the log of the Sum of the weights
+        Sum of the weights if log_weights=False (default), else the log of the sum of the weights
 
     See Also
     --------
@@ -2198,7 +2198,7 @@ def roots_sh_legendre(n, mu=False, log_weights=False):
     w : ndarray
         Weights if log_weights=False (default), else the log of the weights
     mu : float
-        Sum of the weights if log_weights=False (default), else the log of the Sum of the weights
+        Sum of the weights if log_weights=False (default), else the log of the sum of the weights
 
     See Also
     --------

@@ -2152,7 +2152,7 @@ def legendre(n, monic=False):
 # Shifted Legendre              P^*_n(x)
 
 
-def roots_sh_legendre(n, mu=False):
+def roots_sh_legendre(n, mu=False, log_weights=False):
     r"""Gauss-Legendre (shifted) quadrature.
 
     Compute the sample points and weights for Gauss-Legendre
@@ -2168,15 +2168,17 @@ def roots_sh_legendre(n, mu=False):
         quadrature order
     mu : bool, optional
         If True, return the sum of the weights, optional.
+    log_weights : bool, optional
+        If true, return the log of the weights and mu0, optional.
 
     Returns
     -------
     x : ndarray
         Sample points
     w : ndarray
-        Weights
+        Weights if log_weights=False (default), else the log of the weights
     mu : float
-        Sum of the weights
+        Sum of the weights if log_weights=False (default), else the log of the Sum of the weights
 
     See Also
     --------
@@ -2190,11 +2192,17 @@ def roots_sh_legendre(n, mu=False):
         Graphs, and Mathematical Tables. New York: Dover, 1972.
 
     """
-    x, w = roots_legendre(n)
+    x, w = roots_legendre(n, log_weights)
     x = (x + 1) / 2
-    w /= 2
+
+    if log_weights:
+        w -= np.log(2)
+        mu0 = 0.0
+    else:
+        w /= 2
+        mu0 = 1.0
     if mu:
-        return x, w, 1.0
+        return x, w, mu0
     else:
         return x, w
 

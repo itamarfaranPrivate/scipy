@@ -1,5 +1,4 @@
-"""Filter design.
-"""
+"""Filter design."""
 import math
 import operator
 import warnings
@@ -15,7 +14,9 @@ from numpy.polynomial.polynomial import polyval as npp_polyval
 from numpy.polynomial.polynomial import polyvalfromroots
 
 from scipy import special, optimize, fft as sp_fft
-from scipy.special import comb, factorial
+from scipy.special import comb
+from scipy._lib._util import float_factorial
+from scipy.optimize import root_scalar
 
 
 __all__ = ['findfreqs', 'freqs', 'freqz', 'tf2zpk', 'zpk2tf', 'normalize',
@@ -27,7 +28,7 @@ __all__ = ['findfreqs', 'freqs', 'freqz', 'tf2zpk', 'zpk2tf', 'normalize',
            'tf2sos', 'sos2tf', 'zpk2sos', 'sos2zpk', 'group_delay',
            'sosfreqz', 'iirnotch', 'iirpeak', 'bilinear_zpk',
            'lp2lp_zpk', 'lp2hp_zpk', 'lp2bp_zpk', 'lp2bs_zpk',
-           'gammatone']
+           'gammatone', 'iircomb']
 
 
 class BadCoefficients(UserWarning):
@@ -310,7 +311,7 @@ def freqz(b, a=1, worN=512, whole=False, plot=None, fs=2*pi, include_nyquist=Fal
     whole : bool, optional
         Normally, frequencies are computed from 0 to the Nyquist frequency,
         fs/2 (upper-half of unit-circle). If `whole` is True, compute
-        frequencies from 0 to fs. Ignored if w is array_like.
+        frequencies from 0 to fs. Ignored if worN is array_like.
     plot : callable
         A callable that takes two arguments. If given, the return parameters
         `w` and `h` are passed to plot. Useful for plotting the frequency
@@ -388,8 +389,8 @@ def freqz(b, a=1, worN=512, whole=False, plot=None, fs=2*pi, include_nyquist=Fal
     rows of an array with shape (2, 25). For this demonstration, we'll
     use random data:
 
-    >>> np.random.seed(42)
-    >>> b = np.random.rand(2, 25)
+    >>> rng = np.random.default_rng()
+    >>> b = rng.random((2, 25))
 
     To compute the frequency response for these two filters with one call
     to `freqz`, we must pass in ``b.T``, because `freqz` expects the first
@@ -2011,13 +2012,16 @@ def bilinear(b, a, fs=1.0):
 
     >>> fs = 100
     >>> bf = 2 * np.pi * np.array([7, 13])
-    >>> filts = signal.lti(*signal.butter(4, bf, btype='bandpass', analog=True))
+    >>> filts = signal.lti(*signal.butter(4, bf, btype='bandpass',
+    ...                                   analog=True))
     >>> filtz = signal.lti(*signal.bilinear(filts.num, filts.den, fs))
     >>> wz, hz = signal.freqz(filtz.num, filtz.den)
     >>> ws, hs = signal.freqs(filts.num, filts.den, worN=fs*wz)
 
-    >>> plt.semilogx(wz*fs/(2*np.pi), 20*np.log10(np.abs(hz).clip(1e-15)), label=r'$|H(j \omega)|$')
-    >>> plt.semilogx(wz*fs/(2*np.pi), 20*np.log10(np.abs(hs).clip(1e-15)), label=r'$|H_z(e^{j \omega})|$')
+    >>> plt.semilogx(wz*fs/(2*np.pi), 20*np.log10(np.abs(hz).clip(1e-15)),
+    ...              label=r'$|H_z(e^{j \omega})|$')
+    >>> plt.semilogx(wz*fs/(2*np.pi), 20*np.log10(np.abs(hs).clip(1e-15)),
+    ...              label=r'$|H(j \omega)|$')
     >>> plt.legend()
     >>> plt.xlabel('Frequency [Hz]')
     >>> plt.ylabel('Magnitude [dB]')
@@ -2109,9 +2113,25 @@ def iirdesign(wp, ws, gpass, gstop, analog=False, ftype='ellip', output='ba',
             - Bessel/Thomson: 'bessel'
 
     output : {'ba', 'zpk', 'sos'}, optional
-        Type of output:  numerator/denominator ('ba'), pole-zero ('zpk'), or
-        second-order sections ('sos'). Default is 'ba' for backwards
-        compatibility, but 'sos' should be used for general-purpose filtering.
+        Filter form of the output:
+
+            - second-order sections (recommended): 'sos'
+            - numerator/denominator (default)    : 'ba'
+            - pole-zero                          : 'zpk'
+
+        In general the second-order sections ('sos') form  is
+        recommended because inferring the coefficients for the
+        numerator/denominator form ('ba') suffers from numerical
+        instabilities. For reasons of backward compatibility the default
+        form is the numerator/denominator form ('ba'), where the 'b'
+        and the 'a' in 'ba' refer to the commonly used names of the
+        coefficients used.
+
+        Note: Using the second-order sections form ('sos') is sometimes
+        associated with additional computational costs: for
+        data-intense use cases it is therefore recommended to also
+        investigate the numerator/denominator form ('ba').
+
     fs : float, optional
         The sampling frequency of the digital system.
 
@@ -2195,7 +2215,9 @@ def iirdesign(wp, ws, gpass, gstop, analog=False, ftype='ellip', output='ba',
     if wp.shape[0] == 2:
         if wp[0] < 0 or ws[0] < 0:
             raise ValueError("Values for wp, ws can't be negative")
-        if not((ws[0] < wp[0] and wp[1] < ws[1]) or
+        elif 1 < wp[1] or 1 < ws[1]:
+            raise ValueError("Values for wp, ws can't be larger than 1")
+        elif not((ws[0] < wp[0] and wp[1] < ws[1]) or
             (wp[0] < ws[0] and ws[1] < wp[1])):
             raise ValueError("Passband must lie strictly inside stopband"
                          " or vice versa")
@@ -2255,9 +2277,25 @@ def iirfilter(N, Wn, rp=None, rs=None, btype='band', analog=False,
             - Bessel/Thomson: 'bessel'
 
     output : {'ba', 'zpk', 'sos'}, optional
-        Type of output:  numerator/denominator ('ba'), pole-zero ('zpk'), or
-        second-order sections ('sos'). Default is 'ba' for backwards
-        compatibility, but 'sos' should be used for general-purpose filtering.
+        Filter form of the output:
+
+            - second-order sections (recommended): 'sos'
+            - numerator/denominator (default)    : 'ba'
+            - pole-zero                          : 'zpk'
+
+        In general the second-order sections ('sos') form  is
+        recommended because inferring the coefficients for the
+        numerator/denominator form ('ba') suffers from numerical
+        instabilities. For reasons of backward compatibility the default
+        form is the numerator/denominator form ('ba'), where the 'b'
+        and the 'a' in 'ba' refer to the commonly used names of the
+        coefficients used.
+
+        Note: Using the second-order sections form ('sos') is sometimes
+        associated with additional computational costs: for
+        data-intense use cases it is therefore recommended to also
+        investigate the numerator/denominator form ('ba').
+
     fs : float, optional
         The sampling frequency of the digital system.
 
@@ -2484,12 +2522,17 @@ def bilinear_zpk(z, p, k, fs):
 
     >>> fs = 100
     >>> bf = 2 * np.pi * np.array([7, 13])
-    >>> filts = signal.lti(*signal.butter(4, bf, btype='bandpass', analog=True, output='zpk'))
-    >>> filtz = signal.lti(*signal.bilinear_zpk(filts.zeros, filts.poles, filts.gain, fs))
+    >>> filts = signal.lti(*signal.butter(4, bf, btype='bandpass', analog=True,
+    ...                                   output='zpk'))
+    >>> filtz = signal.lti(*signal.bilinear_zpk(filts.zeros, filts.poles,
+    ...                                         filts.gain, fs))
     >>> wz, hz = signal.freqz_zpk(filtz.zeros, filtz.poles, filtz.gain)
-    >>> ws, hs = signal.freqs_zpk(filts.zeros, filts.poles, filts.gain, worN=fs*wz)
-    >>> plt.semilogx(wz*fs/(2*np.pi), 20*np.log10(np.abs(hz).clip(1e-15)), label=r'$|H(j \omega)|$')
-    >>> plt.semilogx(wz*fs/(2*np.pi), 20*np.log10(np.abs(hs).clip(1e-15)), label=r'$|H_z(e^{j \omega})|$')
+    >>> ws, hs = signal.freqs_zpk(filts.zeros, filts.poles, filts.gain,
+    ...                           worN=fs*wz)
+    >>> plt.semilogx(wz*fs/(2*np.pi), 20*np.log10(np.abs(hz).clip(1e-15)),
+    ...              label=r'$|H_z(e^{j \omega})|$')
+    >>> plt.semilogx(wz*fs/(2*np.pi), 20*np.log10(np.abs(hs).clip(1e-15)),
+    ...              label=r'$|H(j \omega)|$')
     >>> plt.legend()
     >>> plt.xlabel('Frequency [Hz]')
     >>> plt.ylabel('Magnitude [dB]')
@@ -3974,6 +4017,13 @@ def cheb2ord(wp, ws, gpass, gstop, analog=False, fs=None):
     return ord, wn
 
 
+_POW10_LOG10 = np.log(10)
+
+def _pow10m1(x):
+    """10 ** x - 1 for x near 0"""
+    return np.expm1(_POW10_LOG10 * x)
+
+
 def ellipord(wp, ws, gpass, gstop, analog=False, fs=None):
     """Elliptic (Cauer) filter order selection.
 
@@ -4094,12 +4144,10 @@ def ellipord(wp, ws, gpass, gstop, analog=False, fs=None):
 
     nat = min(abs(nat))
 
-    GSTOP = 10 ** (0.1 * gstop)
-    GPASS = 10 ** (0.1 * gpass)
-    arg1 = sqrt((GPASS - 1.0) / (GSTOP - 1.0))
+    arg1_sq = _pow10m1(0.1 * gpass) / _pow10m1(0.1 * gstop)
     arg0 = 1.0 / nat
-    d0 = special.ellipk([arg0 ** 2, 1 - arg0 ** 2])
-    d1 = special.ellipk([arg1 ** 2, 1 - arg1 ** 2])
+    d0 = special.ellipk(arg0 ** 2), special.ellipkm1(arg0 ** 2)
+    d1 = special.ellipk(arg1_sq), special.ellipkm1(arg1_sq)
     ord = int(ceil(d0[0] * d1[1] / (d0[1] * d1[0])))
 
     if not analog:
@@ -4218,27 +4266,129 @@ def cheb2ap(N, rs):
 
 EPSILON = 2e-16
 
+# number of terms in solving degree equation
+_ELLIPDEG_MMAX = 7
 
-def _vratio(u, ineps, mp):
-    [s, c, d, phi] = special.ellipj(u, mp)
-    ret = abs(ineps - s / c)
-    return ret
+def _ellipdeg(n, m1):
+    """Solve degree equation using nomes
+
+    Given n, m1, solve
+       n * K(m) / K'(m) = K1(m1) / K1'(m1)
+    for m
+
+    See [1], Eq. (49)
+
+    References
+    ----------
+    .. [1] Orfanidis, "Lecture Notes on Elliptic Filter Design",
+           https://www.ece.rutgers.edu/~orfanidi/ece521/notes.pdf
+    """
+    K1 = special.ellipk(m1)
+    K1p = special.ellipkm1(m1)
+
+    q1 = np.exp(-np.pi * K1p / K1)
+    q = q1 ** (1/n)
+
+    mnum = np.arange(_ELLIPDEG_MMAX + 1)
+    mden = np.arange(1, _ELLIPDEG_MMAX + 2)
+
+    num = np.sum(q ** (mnum * (mnum+1)))
+    den = 1 + 2 * np.sum(q ** (mden**2))
+
+    return 16 * q * (num / den) ** 4
 
 
-def _kratio(m, k_ratio):
-    m = float(m)
-    if m < 0:
-        m = 0.0
-    if m > 1:
-        m = 1.0
-    if abs(m) > EPSILON and (abs(m) + EPSILON) < 1:
-        k = special.ellipk([m, 1 - m])
-        r = k[0] / k[1] - k_ratio
-    elif abs(m) > EPSILON:
-        r = -k_ratio
-    else:
-        r = 1e20
-    return abs(r)
+# Maximum number of iterations in Landen transformation recursion
+# sequence.  10 is conservative; unit tests pass with 4, Orfanidis
+# (see _arc_jac_cn [1]) suggests 5.
+_ARC_JAC_SN_MAXITER = 10
+
+def _arc_jac_sn(w, m):
+    """Inverse Jacobian elliptic sn
+
+    Solve for z in w = sn(z, m)
+
+    Parameters
+    ----------
+    w - complex scalar
+        argument
+
+    m - scalar
+        modulus; in interval [0, 1]
+
+
+    See [1], Eq. (56)
+
+    References
+    ----------
+    .. [1] Orfanidis, "Lecture Notes on Elliptic Filter Design",
+           https://www.ece.rutgers.edu/~orfanidi/ece521/notes.pdf
+
+    """
+
+    def _complement(kx):
+        # (1-k**2) ** 0.5; the expression below 
+        # works for small kx
+        return ((1 - kx) * (1 + kx)) ** 0.5
+
+
+    k = m ** 0.5
+
+    if k > 1:
+        return np.nan
+    elif k == 1:
+        return np.arctanh(w)
+
+    ks = [k]
+    niter = 0
+    while ks[-1] != 0:
+        k_ = ks[-1]
+        k_p = _complement(k_)
+        ks.append((1 - k_p) / (1 + k_p))
+        niter += 1
+        if niter > _ARC_JAC_SN_MAXITER:
+            raise ValueError('Landen transformation not converging')
+
+    K = np.product(1 + np.array(ks[1:])) * np.pi/2
+
+    wns = [w]
+
+    for kn, knext in zip(ks[:-1], ks[1:]):
+        wn = wns[-1]
+        wnext = ( 2 * wn
+                  /
+                 ( (1 + knext) * (1 + _complement(kn * wn)) ) )
+        wns.append(wnext)
+
+    u = 2 / np.pi * np.arcsin(wns[-1])
+
+    z = K * u
+    return z
+
+
+def _arc_jac_sc1(w, m):
+    """Real inverse Jacobian sc, with complementary modulus
+
+    Solve for z in w = sc(z, 1-m)
+
+    w - real scalar
+
+    m - modulus
+
+    From [1], sc(z, m) = -i * sn(i * z, 1 - m)
+
+    References
+    ----------
+    .. [1] https://functions.wolfram.com/EllipticFunctions/JacobiSC/introductions/JacobiPQs/ShowAll.html, 
+       "Representations through other Jacobi functions"
+
+    """
+
+    zcomplex = _arc_jac_sn(1j * w, m)
+    if abs(zcomplex.real) > 1e-14:
+        raise ValueError
+
+    return zcomplex.imag
 
 
 def ellipap(N, rp, rs):
@@ -4259,6 +4409,9 @@ def ellipap(N, rp, rs):
     .. [1] Lutova, Tosic, and Evans, "Filter Design for Signal Processing",
            Chapters 5 and 12.
 
+    .. [2] Orfanidis, "Lecture Notes on Elliptic Filter Design",
+           https://www.ece.rutgers.edu/~orfanidi/ece521/notes.pdf
+
     """
     if abs(int(N)) != N:
         raise ValueError("Filter order must be a nonnegative integer")
@@ -4267,29 +4420,22 @@ def ellipap(N, rp, rs):
         # Even order filters have DC gain of -rp dB
         return numpy.array([]), numpy.array([]), 10**(-rp/20)
     elif N == 1:
-        p = -sqrt(1.0 / (10 ** (0.1 * rp) - 1.0))
+        p = -sqrt(1.0 / _pow10m1(0.1 * rp))
         k = -p
         z = []
         return asarray(z), asarray(p), k
 
-    eps = numpy.sqrt(10 ** (0.1 * rp) - 1)
-    ck1 = eps / numpy.sqrt(10 ** (0.1 * rs) - 1)
-    ck1p = numpy.sqrt(1 - ck1 * ck1)
-    if ck1p == 1:
+    eps_sq = _pow10m1(0.1 * rp)
+
+    eps = np.sqrt(eps_sq)
+    ck1_sq = eps_sq / _pow10m1(0.1 * rs)
+    if ck1_sq == 0:
         raise ValueError("Cannot design a filter with given rp and rs"
                          " specifications.")
 
-    val = special.ellipk([ck1 * ck1, ck1p * ck1p])
-    if abs(1 - ck1p * ck1p) < EPSILON:
-        krat = 0
-    else:
-        krat = N * val[0] / val[1]
+    val = special.ellipk(ck1_sq), special.ellipkm1(ck1_sq)
 
-    m = optimize.fmin(_kratio, [0.5], args=(krat,), maxfun=250, maxiter=250,
-                      disp=0)
-    if m < 0 or m > 1:
-        m = optimize.fminbound(_kratio, 0, 1, args=(krat,), maxfun=250,
-                               disp=0)
+    m = _ellipdeg(N, ck1_sq)
 
     capk = special.ellipk(m)
 
@@ -4302,8 +4448,7 @@ def ellipap(N, rp, rs):
     z = 1j * z
     z = numpy.concatenate((z, conjugate(z)))
 
-    r = optimize.fmin(_vratio, special.ellipk(m), args=(1. / eps, ck1p * ck1p),
-                      maxfun=250, maxiter=250, disp=0)
+    r = _arc_jac_sc1(1. / eps, ck1_sq)
     v0 = capk * r / (N * val[0])
 
     [sv, cv, dv, phi] = special.ellipj(v0, 1 - m)
@@ -4320,7 +4465,7 @@ def ellipap(N, rp, rs):
 
     k = (numpy.prod(-p, axis=0) / numpy.prod(-z, axis=0)).real
     if N % 2 == 0:
-        k = k / numpy.sqrt((1 + eps * eps))
+        k = k / numpy.sqrt((1 + eps_sq))
 
     return z, p, k
 
@@ -4385,7 +4530,7 @@ def _bessel_poly(n, reverse=False):
     out = []
     for k in range(n + 1):
         num = _falling_factorial(2*n - k, n)
-        den = 2**(n - k) * factorial(k, exact=True)
+        den = 2**(n - k) * math.factorial(k)
         out.append(num // den)
 
     if reverse:
@@ -4838,7 +4983,7 @@ def _design_notch_peak_filter(w0, Q, ftype, fs=2.0):
     bw = bw*np.pi
     w0 = w0*np.pi
 
-    # Compute -3dB atenuation
+    # Compute -3dB attenuation
     gb = 1/np.sqrt(2)
 
     if ftype == "notch":
@@ -4861,6 +5006,199 @@ def _design_notch_peak_filter(w0, Q, ftype, fs=2.0):
     else:
         b = (1.0-gain)*np.array([1.0, 0.0, -1.0])
     a = np.array([1.0, -2.0*gain*np.cos(w0), (2.0*gain-1.0)])
+
+    return b, a
+
+
+def iircomb(w0, Q, ftype='notch', fs=2.0):
+    """
+    Design IIR notching or peaking digital comb filter.
+
+    A notching comb filter is a band-stop filter with a narrow bandwidth
+    (high quality factor). It rejects a narrow frequency band and
+    leaves the rest of the spectrum little changed.
+
+    A peaking comb filter is a band-pass filter with a narrow bandwidth
+    (high quality factor). It rejects components outside a narrow
+    frequency band.
+
+    Parameters
+    ----------
+    w0 : float
+        Frequency to attenuate (notching) or boost (peaking). If `fs` is
+        specified, this is in the same units as `fs`. By default, it is
+        a normalized scalar that must satisfy  ``0 < w0 < 1``, with
+        ``w0 = 1`` corresponding to half of the sampling frequency.
+    Q : float
+        Quality factor. Dimensionless parameter that characterizes
+        notch filter -3 dB bandwidth ``bw`` relative to its center
+        frequency, ``Q = w0/bw``.
+    ftype : {'notch', 'peak'}
+        The type of comb filter generated by the function. If 'notch', then
+        it returns a filter with notches at frequencies ``0``, ``w0``,
+        ``2 * w0``, etc. If 'peak', then it returns a filter with peaks at
+        frequencies ``0.5 * w0``, ``1.5 * w0``, ``2.5 * w0```, etc.
+        Default is 'notch'.
+    fs : float, optional
+        The sampling frequency of the signal. Default is 2.0.
+
+    Returns
+    -------
+    b, a : ndarray, ndarray
+        Numerator (``b``) and denominator (``a``) polynomials
+        of the IIR filter.
+
+    Raises
+    ------
+    ValueError
+        If `w0` is less than or equal to 0 or greater than or equal to
+        ``fs/2``, if `fs` is not divisible by `w0`, if `ftype`
+        is not 'notch' or 'peak'
+
+    See Also
+    --------
+    iirnotch
+    iirpeak
+
+    Notes
+    -----
+    For implementation details, see [1]_. The TF implementation of the
+    comb filter is numerically stable even at higher orders due to the
+    use of a single repeated pole, which won't suffer from precision loss.
+
+    References
+    ----------
+    .. [1] Sophocles J. Orfanidis, "Introduction To Signal Processing",
+           Prentice-Hall, 1996
+
+    Examples
+    --------
+    Design and plot notching comb filter at 20 Hz for a
+    signal sampled at 200 Hz, using quality factor Q = 30
+
+    >>> from scipy import signal
+    >>> import matplotlib.pyplot as plt
+
+    >>> fs = 200.0  # Sample frequency (Hz)
+    >>> f0 = 20.0  # Frequency to be removed from signal (Hz)
+    >>> Q = 30.0  # Quality factor
+    >>> # Design notching comb filter
+    >>> b, a = signal.iircomb(f0, Q, ftype='notch', fs=fs)
+
+    >>> # Frequency response
+    >>> freq, h = signal.freqz(b, a, fs=fs)
+    >>> response = abs(h)
+    >>> # To avoid divide by zero when graphing
+    >>> response[response == 0] = 1e-20
+    >>> # Plot
+    >>> fig, ax = plt.subplots(2, 1, figsize=(8, 6))
+    >>> ax[0].plot(freq, 20*np.log10(abs(response)), color='blue')
+    >>> ax[0].set_title("Frequency Response")
+    >>> ax[0].set_ylabel("Amplitude (dB)", color='blue')
+    >>> ax[0].set_xlim([0, 100])
+    >>> ax[0].set_ylim([-30, 10])
+    >>> ax[0].grid()
+    >>> ax[1].plot(freq, np.unwrap(np.angle(h))*180/np.pi, color='green')
+    >>> ax[1].set_ylabel("Angle (degrees)", color='green')
+    >>> ax[1].set_xlabel("Frequency (Hz)")
+    >>> ax[1].set_xlim([0, 100])
+    >>> ax[1].set_yticks([-90, -60, -30, 0, 30, 60, 90])
+    >>> ax[1].set_ylim([-90, 90])
+    >>> ax[1].grid()
+    >>> plt.show()
+
+    Design and plot peaking comb filter at 250 Hz for a
+    signal sampled at 1000 Hz, using quality factor Q = 30
+
+    >>> fs = 1000.0  # Sample frequency (Hz)
+    >>> f0 = 250.0  # Frequency to be retained (Hz)
+    >>> Q = 30.0  # Quality factor
+    >>> # Design peaking filter
+    >>> b, a = signal.iircomb(f0, Q, ftype='peak', fs=fs)
+
+    >>> # Frequency response
+    >>> freq, h = signal.freqz(b, a, fs=fs)
+    >>> response = abs(h)
+    >>> # To avoid divide by zero when graphing
+    >>> response[response == 0] = 1e-20
+    >>> # Plot
+    >>> fig, ax = plt.subplots(2, 1, figsize=(8, 6))
+    >>> ax[0].plot(freq, 20*np.log10(np.maximum(abs(h), 1e-5)), color='blue')
+    >>> ax[0].set_title("Frequency Response")
+    >>> ax[0].set_ylabel("Amplitude (dB)", color='blue')
+    >>> ax[0].set_xlim([0, 500])
+    >>> ax[0].set_ylim([-80, 10])
+    >>> ax[0].grid()
+    >>> ax[1].plot(freq, np.unwrap(np.angle(h))*180/np.pi, color='green')
+    >>> ax[1].set_ylabel("Angle (degrees)", color='green')
+    >>> ax[1].set_xlabel("Frequency (Hz)")
+    >>> ax[1].set_xlim([0, 500])
+    >>> ax[1].set_yticks([-90, -60, -30, 0, 30, 60, 90])
+    >>> ax[1].set_ylim([-90, 90])
+    >>> ax[1].grid()
+    >>> plt.show()
+    """
+
+    # Convert w0, Q, and fs to float
+    w0 = float(w0)
+    Q = float(Q)
+    fs = float(fs)
+
+    # Check for invalid cutoff frequency or filter type
+    ftype = ftype.lower()
+    filter_types = ['notch', 'peak']
+    if not 0 < w0 < fs / 2:
+        raise ValueError("w0 must be between 0 and {}"
+                         " (nyquist), but given {}.".format(fs / 2, w0))
+    if np.round(fs % w0) != 0:
+        raise ValueError('fs must be divisible by w0.')
+    if ftype not in filter_types:
+        raise ValueError('ftype must be either notch or peak.')
+
+    # Compute the order of the filter
+    N = int(fs // w0)
+
+    # Compute frequency in radians and filter bandwith
+    # Eq. 11.3.1 (p. 574) from reference [1]
+    w0 = (2 * np.pi * w0) / fs
+    w_delta = w0 / Q
+
+    # Define base gain values depending on notch or peak filter
+    # Compute -3dB attenuation
+    # Eqs. 11.4.1 and 11.4.2 (p. 582) from reference [1]
+    if ftype == 'notch':
+        G0, G = [1, 0]
+    elif ftype == 'peak':
+        G0, G = [0, 1]
+    GB = 1 / np.sqrt(2)
+
+    # Compute beta
+    # Eq. 11.5.3 (p. 591) from reference [1]
+    beta = np.sqrt((GB**2 - G0**2) / (G**2 - GB**2)) * np.tan(N * w_delta / 4)
+
+    # Compute filter coefficients
+    # Eq 11.5.1 (p. 590) variables a, b, c from reference [1]
+    ax = (1 - beta) / (1 + beta)
+    bx = (G0 + G * beta) / (1 + beta)
+    cx = (G0 - G * beta) / (1 + beta)
+
+    # Compute numerator coefficients
+    # Eq 11.5.1 (p. 590) or Eq 11.5.4 (p. 591) from reference [1]
+    # b - cz^-N or b + cz^-N
+    b = np.zeros(N + 1)
+    b[0] = bx
+    b[-1] = cx
+    if ftype == 'notch':
+        b[-1] = -cx
+
+    # Compute denominator coefficients
+    # Eq 11.5.1 (p. 590) or Eq 11.5.4 (p. 591) from reference [1]
+    # 1 - az^-N or 1 + az^-N
+    a = np.zeros(N + 1)
+    a[0] = 1
+    a[-1] = ax
+    if ftype == 'notch':
+        a[-1] = -ax
 
     return b, a
 
@@ -4999,7 +5337,7 @@ def gammatone(freq, ftype, order=None, numtaps=None, fs=None):
 
         # Scale the FIR filter so the frequency response is 1 at cutoff
         scale_factor = 2 * (2 * np.pi * bw) ** (order)
-        scale_factor /= np.math.factorial(order - 1)
+        scale_factor /= float_factorial(order - 1)
         scale_factor /= fs
         b *= scale_factor
         a = [1.0]
@@ -5033,8 +5371,8 @@ def gammatone(freq, ftype, order=None, numtaps=None, fs=None):
         g = np.abs(g)
 
         # Create empty filter coefficient lists
-        b = np.empty((5))
-        a = np.empty((9))
+        b = np.empty(5)
+        a = np.empty(9)
 
         # Calculate the numerator coefficients
         b[0] = (T ** 4) / g

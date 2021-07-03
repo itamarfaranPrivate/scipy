@@ -69,10 +69,10 @@ except AttributeError:
 #-----------------------------------
 
 # Source of the release notes
-RELEASE = 'doc/release/1.6.0-notes.rst'
+RELEASE = 'doc/release/1.8.0-notes.rst'
 
 # Start/end of the log (from git)
-LOG_START = 'v1.5.0'
+LOG_START = 'v1.7.0'
 LOG_END = 'master'
 
 
@@ -81,7 +81,7 @@ LOG_END = 'master'
 #-------------------------------------------------------
 
 # Default Python version
-PYVER="3.6"
+PYVER="3.9"
 
 # Paver options object, holds all default dirs
 options(bootstrap=Bunch(bootstrap_dir="bootstrap"),
@@ -206,9 +206,10 @@ def release(options):
 def compute_md5(idirs):
     released = paver.path.path(idirs).listdir()
     checksums = []
-    for f in sorted(released):
-        m = md5(open(f, 'rb').read())
-        checksums.append('%s  %s' % (m.hexdigest(), os.path.basename(f)))
+    for fn in sorted(released):
+        with open(fn, 'rb') as f:
+            m = md5(f.read())
+        checksums.append('%s  %s' % (m.hexdigest(), os.path.basename(fn)))
 
     return checksums
 
@@ -217,9 +218,10 @@ def compute_sha256(idirs):
     # to verify the binaries instead of signing all binaries
     released = paver.path.path(idirs).listdir()
     checksums = []
-    for f in sorted(released):
-        m = sha256(open(f, 'rb').read())
-        checksums.append('%s  %s' % (m.hexdigest(), os.path.basename(f)))
+    for fn in sorted(released):
+        with open(fn, 'rb') as f:
+            m = sha256(f.read())
+        checksums.append('%s  %s' % (m.hexdigest(), os.path.basename(fn)))
 
     return checksums
 
@@ -267,9 +269,8 @@ def write_log_task(filename='Changelog'):
             stdout=subprocess.PIPE)
 
     out = st.communicate()[0].decode()
-    a = open(filename, 'w')
-    a.writelines(out)
-    a.close()
+    with open(filename, 'w') as a:
+        a.writelines(out)
 
 @task
 @cmdopts([('gpg_key=', 'g', 'GPG key to use for signing')])

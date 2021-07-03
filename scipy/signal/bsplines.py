@@ -6,14 +6,11 @@ from numpy.core.umath import (sqrt, exp, greater, less, cos, add, sin,
 # From splinemodule.c
 from .spline import cspline2d, sepfir2d
 
-from scipy.special import comb, gamma
+from scipy.special import comb
+from scipy._lib._util import float_factorial
 
 __all__ = ['spline_filter', 'bspline', 'gauss_spline', 'cubic', 'quadratic',
            'cspline1d', 'qspline1d', 'cspline1d_eval', 'qspline1d_eval']
-
-
-def factorial(n):
-    return gamma(n + 1)
 
 
 def spline_filter(Iin, lmbda=5.0):
@@ -24,7 +21,7 @@ def spline_filter(Iin, lmbda=5.0):
 
     Parameters
     ----------
-    Iin : array like
+    Iin : array_like
         input data set
     lmbda : float, optional
         spline smooghing fall-off value, default is `5.0`.
@@ -118,7 +115,7 @@ def _bspline_piecefunctions(order):
     #  in the general expression derived from the central difference
     #  operator (because they involve fewer terms).
 
-    fval = factorial(order)
+    fval = float_factorial(order)
 
     def piecefuncgen(num):
         Mk = order // 2 - num
@@ -147,7 +144,7 @@ def bspline(x, n):
 
     Parameters
     ----------
-    x : array like
+    x : array_like
         a knot vector
     n : int
         The order of the spline. Must be non-negative, i.e., n >= 0
@@ -197,7 +194,7 @@ def gauss_spline(x, n):
 
     Parameters
     ----------
-    x : array
+    x : array_like
         a knot vector
     n : int
         The order of the spline. Must be non-negative, i.e., n >= 0
@@ -251,7 +248,7 @@ def cubic(x):
 
     Parameters
     ----------
-    x : array like
+    x : array_like
         a knot vector
 
     Returns
@@ -303,7 +300,7 @@ def quadratic(x):
 
     Parameters
     ----------
-    x : array like
+    x : array_like
         a knot vector
 
     Returns
@@ -462,8 +459,9 @@ def cspline1d(signal, lamb=0.0):
 
     >>> import matplotlib.pyplot as plt
     >>> from scipy.signal import cspline1d, cspline1d_eval
+    >>> rng = np.random.default_rng()
     >>> sig = np.repeat([0., 1., 0.], 100)
-    >>> sig += np.random.randn(len(sig))*0.05  # add noise
+    >>> sig += rng.standard_normal(len(sig))*0.05  # add noise
     >>> time = np.linspace(0, len(sig))
     >>> filtered = cspline1d_eval(cspline1d(sig), time)
     >>> plt.plot(sig, label="signal")
@@ -511,8 +509,9 @@ def qspline1d(signal, lamb=0.0):
 
     >>> import matplotlib.pyplot as plt
     >>> from scipy.signal import qspline1d, qspline1d_eval
+    >>> rng = np.random.default_rng()
     >>> sig = np.repeat([0., 1., 0.], 100)
-    >>> sig += np.random.randn(len(sig))*0.05  # add noise
+    >>> sig += rng.standard_normal(len(sig))*0.05  # add noise
     >>> time = np.linspace(0, len(sig))
     >>> filtered = qspline1d_eval(qspline1d(sig), time)
     >>> plt.plot(sig, label="signal")
@@ -565,8 +564,9 @@ def cspline1d_eval(cj, newx, dx=1.0, x0=0):
 
     >>> import matplotlib.pyplot as plt
     >>> from scipy.signal import cspline1d, cspline1d_eval
+    >>> rng = np.random.default_rng()
     >>> sig = np.repeat([0., 1., 0.], 100)
-    >>> sig += np.random.randn(len(sig))*0.05  # add noise
+    >>> sig += rng.standard_normal(len(sig))*0.05  # add noise
     >>> time = np.linspace(0, len(sig))
     >>> filtered = cspline1d_eval(cspline1d(sig), time)
     >>> plt.plot(sig, label="signal")
@@ -639,8 +639,9 @@ def qspline1d_eval(cj, newx, dx=1.0, x0=0):
 
     >>> import matplotlib.pyplot as plt
     >>> from scipy.signal import qspline1d, qspline1d_eval
+    >>> rng = np.random.default_rng()
     >>> sig = np.repeat([0., 1., 0.], 100)
-    >>> sig += np.random.randn(len(sig))*0.05  # add noise
+    >>> sig += rng.standard_normal(len(sig))*0.05  # add noise
     >>> time = np.linspace(0, len(sig))
     >>> filtered = qspline1d_eval(qspline1d(sig), time)
     >>> plt.plot(sig, label="signal")

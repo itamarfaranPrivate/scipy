@@ -2262,7 +2262,7 @@ def roots_sh_legendre(n, mu=False, log_weights=False):
         Graphs, and Mathematical Tables. New York: Dover, 1972.
 
     """
-    x, w = roots_legendre(n, log_weights)
+    x, w = roots_legendre(n, False, log_weights)
     x = (x + 1) / 2
 
     if log_weights:

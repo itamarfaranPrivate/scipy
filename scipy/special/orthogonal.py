@@ -467,7 +467,7 @@ def sh_jacobi(n, p, q, monic=False):
 # Generalized Laguerre               L^(alpha)_n(x)
 
 
-def roots_genlaguerre(n, alpha, mu=False):
+def roots_genlaguerre(n, alpha, mu=False, log_weights=False):
     r"""Gauss-generalized Laguerre quadrature.
 
     Compute the sample points and weights for Gauss-generalized
@@ -486,15 +486,17 @@ def roots_genlaguerre(n, alpha, mu=False):
         alpha must be > -1
     mu : bool, optional
         If True, return the sum of the weights, optional.
+    log_weights : bool, optional
+        If true, return the log of the weights and mu0, optional.
 
     Returns
     -------
     x : ndarray
         Sample points
     w : ndarray
-        Weights
+        Weights if log_weights=False (default), else the log of the weights
     mu : float
-        Sum of the weights
+        Sum of the weights if log_weights=False (default), else the log of the sum of the weights
 
     See Also
     --------
@@ -514,7 +516,10 @@ def roots_genlaguerre(n, alpha, mu=False):
     if alpha < -1:
         raise ValueError("alpha must be greater than -1.")
 
-    mu0 = cephes.gamma(alpha + 1)
+    if log_weights:
+        mu0 = cephes.gammaln(alpha + 1)
+    else:
+        mu0 = cephes.gamma(alpha + 1)
 
     if m == 1:
         x = np.array([alpha+1.0], 'd')
@@ -529,7 +534,7 @@ def roots_genlaguerre(n, alpha, mu=False):
     f = lambda n, x: cephes.eval_genlaguerre(n, alpha, x)
     df = lambda n, x: (n*cephes.eval_genlaguerre(n, alpha, x)
                      - (n + alpha)*cephes.eval_genlaguerre(n-1, alpha, x))/x
-    return _gen_roots_and_weights(m, mu0, an_func, bn_func, f, df, False, mu)
+    return _gen_roots_and_weights(m, mu0, an_func, bn_func, f, df, False, mu, log_weights)
 
 
 def genlaguerre(n, alpha, monic=False):
@@ -596,7 +601,7 @@ def genlaguerre(n, alpha, monic=False):
 # Laguerre                      L_n(x)
 
 
-def roots_laguerre(n, mu=False):
+def roots_laguerre(n, mu=False, log_weights=False):
     r"""Gauss-Laguerre quadrature.
 
     Compute the sample points and weights for Gauss-Laguerre
@@ -612,15 +617,17 @@ def roots_laguerre(n, mu=False):
         quadrature order
     mu : bool, optional
         If True, return the sum of the weights, optional.
+    log_weights : bool, optional
+        If true, return the log of the weights and mu0, optional.
 
     Returns
     -------
     x : ndarray
         Sample points
     w : ndarray
-        Weights
+        Weights if log_weights=False (default), else the log of the weights
     mu : float
-        Sum of the weights
+        Sum of the weights if log_weights=False (default), else the log of the sum of the weights
 
     See Also
     --------
@@ -635,7 +642,7 @@ def roots_laguerre(n, mu=False):
         Graphs, and Mathematical Tables. New York: Dover, 1972.
 
     """
-    return roots_genlaguerre(n, 0.0, mu=mu)
+    return roots_genlaguerre(n, 0.0, mu=mu, log_weights=log_weights)
 
 
 def laguerre(n, monic=False):
@@ -686,7 +693,7 @@ def laguerre(n, monic=False):
 # Hermite  1                         H_n(x)
 
 
-def roots_hermite(n, mu=False):
+def roots_hermite(n, mu=False, log_weights=False):
     r"""Gauss-Hermite (physicist's) quadrature.
 
     Compute the sample points and weights for Gauss-Hermite
@@ -703,15 +710,17 @@ def roots_hermite(n, mu=False):
         quadrature order
     mu : bool, optional
         If True, return the sum of the weights, optional.
+    log_weights : bool, optional
+        If true, return the log of the weights and mu0, optional.
 
     Returns
     -------
     x : ndarray
         Sample points
     w : ndarray
-        Weights
+        Weights if log_weights=False (default), else the log of the weights
     mu : float
-        Sum of the weights
+        Sum of the weights if log_weights=False (default), else the log of the sum of the weights
 
     Notes
     -----
@@ -753,15 +762,20 @@ def roots_hermite(n, mu=False):
     if n < 1 or n != m:
         raise ValueError("n must be a positive integer.")
 
-    mu0 = np.sqrt(np.pi)
+    if log_weights:
+        mu0 = 0.5 * np.log(np.pi)
+    else:
+        mu0 = np.sqrt(np.pi)
     if n <= 150:
         an_func = lambda k: 0.0*k
         bn_func = lambda k: np.sqrt(k/2.0)
         f = cephes.eval_hermite
         df = lambda n, x: 2.0 * n * cephes.eval_hermite(n-1, x)
-        return _gen_roots_and_weights(m, mu0, an_func, bn_func, f, df, True, mu)
+        return _gen_roots_and_weights(m, mu0, an_func, bn_func, f, df, True, mu, log_weights)
     else:
         nodes, weights = _roots_hermite_asy(m)
+        if log_weights:
+            weights = np.log(weights)
         if mu:
             return nodes, weights, mu0
         else:
@@ -1201,7 +1215,7 @@ def hermite(n, monic=False):
 # Hermite  2                         He_n(x)
 
 
-def roots_hermitenorm(n, mu=False):
+def roots_hermitenorm(n, mu=False, log_weights=False):
     r"""Gauss-Hermite (statistician's) quadrature.
 
     Compute the sample points and weights for Gauss-Hermite
@@ -1218,15 +1232,17 @@ def roots_hermitenorm(n, mu=False):
         quadrature order
     mu : bool, optional
         If True, return the sum of the weights, optional.
+    log_weights : bool, optional
+        If true, return the log of the weights and mu0, optional.
 
     Returns
     -------
     x : ndarray
         Sample points
     w : ndarray
-        Weights
+        Weights if log_weights=False (default), else the log of the weights
     mu : float
-        Sum of the weights
+        Sum of the weights if log_weights=False (default), else the log of the sum of the weights
 
     Notes
     -----
@@ -1257,18 +1273,23 @@ def roots_hermitenorm(n, mu=False):
     if n < 1 or n != m:
         raise ValueError("n must be a positive integer.")
 
-    mu0 = np.sqrt(2.0*np.pi)
+    if log_weights:
+        mu0 = 0.5 * np.log(2.0 * np.pi)
+    else:
+        mu0 = np.sqrt(2.0 * np.pi)
     if n <= 150:
         an_func = lambda k: 0.0*k
         bn_func = lambda k: np.sqrt(k)
         f = cephes.eval_hermitenorm
         df = lambda n, x: n * cephes.eval_hermitenorm(n-1, x)
-        return _gen_roots_and_weights(m, mu0, an_func, bn_func, f, df, True, mu)
+        return _gen_roots_and_weights(m, mu0, an_func, bn_func, f, df, True, mu, log_weights)
     else:
         nodes, weights = _roots_hermite_asy(m)
         # Transform
         nodes *= sqrt(2)
         weights *= sqrt(2)
+        if log_weights:
+            weights = np.log(weights)
         if mu:
             return nodes, weights, mu0
         else:
@@ -1588,7 +1609,7 @@ def chebyt(n, monic=False):
 #    U_n(x) = (n+1)! sqrt(pi) / (2*_gam(n+3./2)) * P^(1/2,1/2)_n(x)
 
 
-def roots_chebyu(n, mu=False):
+def roots_chebyu(n, mu=False, log_weights=False):
     r"""Gauss-Chebyshev (second kind) quadrature.
 
     Computes the sample points and weights for Gauss-Chebyshev
@@ -1605,15 +1626,17 @@ def roots_chebyu(n, mu=False):
         quadrature order
     mu : bool, optional
         If True, return the sum of the weights, optional.
+    log_weights : bool, optional
+        If true, return the log of the weights and mu0, optional.
 
     Returns
     -------
     x : ndarray
         Sample points
     w : ndarray
-        Weights
+        Weights if log_weights=False (default), else the log of the weights
     mu : float
-        Sum of the weights
+        Sum of the weights if log_weights=False (default), else the log of the sum of the weights
 
     See Also
     --------
@@ -1633,8 +1656,12 @@ def roots_chebyu(n, mu=False):
     t = np.arange(m, 0, -1) * pi / (m + 1)
     x = np.cos(t)
     w = pi * np.sin(t)**2 / (m + 1)
+    mu0 = pi / 2
+    if log_weights:
+        w = np.log(w)
+        mu0 = np.log(mu0)
     if mu:
-        return x, w, pi / 2
+        return x, w, mu0
     else:
         return x, w
 
@@ -1683,7 +1710,7 @@ def chebyu(n, monic=False):
 # Chebyshev of the first kind        C_n(x)
 
 
-def roots_chebyc(n, mu=False):
+def roots_chebyc(n, mu=False, log_weights=False):
     r"""Gauss-Chebyshev (first kind) quadrature.
 
     Compute the sample points and weights for Gauss-Chebyshev
@@ -1700,15 +1727,17 @@ def roots_chebyc(n, mu=False):
         quadrature order
     mu : bool, optional
         If True, return the sum of the weights, optional.
+    log_weights : bool, optional
+        If true, return the log of the weights and mu0, optional.
 
     Returns
     -------
     x : ndarray
         Sample points
     w : ndarray
-        Weights
+        Weights if log_weights=False (default), else the log of the weights
     mu : float
-        Sum of the weights
+        Sum of the weights if log_weights=False (default), else the log of the sum of the weights
 
     See Also
     --------
@@ -1722,10 +1751,14 @@ def roots_chebyc(n, mu=False):
         Graphs, and Mathematical Tables. New York: Dover, 1972.
 
     """
-    x, w, m = roots_chebyt(n, True)
+    x, w, m = roots_chebyt(n, True, log_weights)
     x *= 2
-    w *= 2
-    m *= 2
+    if log_weights:
+        w += np.log(2)
+        m += np.log(2)
+    else:
+        w *= 2
+        m *= 2
     if mu:
         return x, w, m
     else:
@@ -1789,7 +1822,7 @@ def chebyc(n, monic=False):
 # Chebyshev of the second kind       S_n(x)
 
 
-def roots_chebys(n, mu=False):
+def roots_chebys(n, mu=False, log_weights=False):
     r"""Gauss-Chebyshev (second kind) quadrature.
 
     Compute the sample points and weights for Gauss-Chebyshev
@@ -1806,15 +1839,17 @@ def roots_chebys(n, mu=False):
         quadrature order
     mu : bool, optional
         If True, return the sum of the weights, optional.
+    log_weights : bool, optional
+        If true, return the log of the weights and mu0, optional.
 
     Returns
     -------
     x : ndarray
         Sample points
     w : ndarray
-        Weights
+        Weights if log_weights=False (default), else the log of the weights
     mu : float
-        Sum of the weights
+        Sum of the weights if log_weights=False (default), else the log of the sum of the weights
 
     See Also
     --------
@@ -1828,10 +1863,14 @@ def roots_chebys(n, mu=False):
         Graphs, and Mathematical Tables. New York: Dover, 1972.
 
     """
-    x, w, m = roots_chebyu(n, True)
+    x, w, m = roots_chebyu(n, True, log_weights)
     x *= 2
-    w *= 2
-    m *= 2
+    if log_weights:
+        w += np.log(2)
+        m += np.log(2)
+    else:
+        w *= 2
+        m *= 2
     if mu:
         return x, w, m
     else:
@@ -1896,7 +1935,7 @@ def chebys(n, monic=False):
 # Shifted Chebyshev of the first kind     T^*_n(x)
 
 
-def roots_sh_chebyt(n, mu=False):
+def roots_sh_chebyt(n, mu=False, log_weights=False):
     r"""Gauss-Chebyshev (first kind, shifted) quadrature.
 
     Compute the sample points and weights for Gauss-Chebyshev
@@ -1913,15 +1952,17 @@ def roots_sh_chebyt(n, mu=False):
         quadrature order
     mu : bool, optional
         If True, return the sum of the weights, optional.
+    log_weights : bool, optional
+        If true, return the log of the weights and mu0, optional.
 
     Returns
     -------
     x : ndarray
         Sample points
     w : ndarray
-        Weights
+        Weights if log_weights=False (default), else the log of the weights
     mu : float
-        Sum of the weights
+        Sum of the weights if log_weights=False (default), else the log of the sum of the weights
 
     See Also
     --------
@@ -1935,7 +1976,7 @@ def roots_sh_chebyt(n, mu=False):
         Graphs, and Mathematical Tables. New York: Dover, 1972.
 
     """
-    xw = roots_chebyt(n, mu)
+    xw = roots_chebyt(n, mu, log_weights)
     return ((xw[0] + 1) / 2,) + xw[1:]
 
 
@@ -1976,7 +2017,7 @@ def sh_chebyt(n, monic=False):
 
 
 # Shifted Chebyshev of the second kind    U^*_n(x)
-def roots_sh_chebyu(n, mu=False):
+def roots_sh_chebyu(n, mu=False, log_weights=False):
     r"""Gauss-Chebyshev (second kind, shifted) quadrature.
 
     Computes the sample points and weights for Gauss-Chebyshev
@@ -1993,15 +2034,17 @@ def roots_sh_chebyu(n, mu=False):
         quadrature order
     mu : bool, optional
         If True, return the sum of the weights, optional.
+    log_weights : bool, optional
+        If true, return the log of the weights and mu0, optional.
 
     Returns
     -------
     x : ndarray
         Sample points
     w : ndarray
-        Weights
+        Weights if log_weights=False (default), else the log of the weights
     mu : float
-        Sum of the weights
+        Sum of the weights if log_weights=False (default), else the log of the sum of the weights
 
     See Also
     --------
@@ -2015,10 +2058,14 @@ def roots_sh_chebyu(n, mu=False):
         Graphs, and Mathematical Tables. New York: Dover, 1972.
 
     """
-    x, w, m = roots_chebyu(n, True)
+    x, w, m = roots_chebyu(n, True, log_weights)
     x = (x + 1) / 2
-    m_us = cephes.beta(1.5, 1.5)
-    w *= m_us / m
+    if log_weights:
+        m_us = cephes.betaln(1.5, 1.5)
+        w += m_us - m
+    else:
+        m_us = cephes.beta(1.5, 1.5)
+        w *= m_us / m
     if mu:
         return x, w, m_us
     else:
@@ -2175,7 +2222,7 @@ def legendre(n, monic=False):
 # Shifted Legendre              P^*_n(x)
 
 
-def roots_sh_legendre(n, mu=False):
+def roots_sh_legendre(n, mu=False, log_weights=False):
     r"""Gauss-Legendre (shifted) quadrature.
 
     Compute the sample points and weights for Gauss-Legendre
@@ -2191,15 +2238,17 @@ def roots_sh_legendre(n, mu=False):
         quadrature order
     mu : bool, optional
         If True, return the sum of the weights, optional.
+    log_weights : bool, optional
+        If true, return the log of the weights and mu0, optional.
 
     Returns
     -------
     x : ndarray
         Sample points
     w : ndarray
-        Weights
+        Weights if log_weights=False (default), else the log of the weights
     mu : float
-        Sum of the weights
+        Sum of the weights if log_weights=False (default), else the log of the sum of the weights
 
     See Also
     --------
@@ -2213,11 +2262,17 @@ def roots_sh_legendre(n, mu=False):
         Graphs, and Mathematical Tables. New York: Dover, 1972.
 
     """
-    x, w = roots_legendre(n)
+    x, w = roots_legendre(n, log_weights)
     x = (x + 1) / 2
-    w /= 2
+
+    if log_weights:
+        w -= np.log(2)
+        mu0 = 0.0
+    else:
+        w /= 2
+        mu0 = 1.0
     if mu:
-        return x, w, 1.0
+        return x, w, mu0
     else:
         return x, w
 

@@ -301,6 +301,13 @@ def verify_gauss_quad(root_func, eval_func, weight_func, a, b, N,
     rtol = 1e-6 if 1e-6 < resI[1] else resI[1] * 10
     assert_allclose(resI[0], resG, rtol=rtol)
 
+def assert_log_weights(root_func, n, *args, rtol=1e-15, atol=1e-14):
+    x, w, m = root_func(n, *args, mu=True, log_weights=False)
+    x_l, w_l, m_l = root_func(n, *args, mu=True, log_weights=True)
+    assert_equal(x, x_l)
+    assert_allclose(np.log(w), w_l, rtol, atol)
+    assert_allclose(np.log(m), m_l, rtol, atol)
+
 def test_roots_jacobi():
     rf = lambda a, b: lambda n, mu: sc.roots_jacobi(n, a, b, mu)
     ef = lambda a, b: lambda n, x: sc.eval_jacobi(n, a, b, x)
